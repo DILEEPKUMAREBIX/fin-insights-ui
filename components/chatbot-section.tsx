@@ -3,6 +3,8 @@
 import type React from "react"
 import { Plus } from "lucide-react" // Import Plus icon
 
+import axios from 'axios';
+
 import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -95,7 +97,40 @@ export function ChatbotSection() {
   // Load chat history on component mount
   useEffect(() => {
     loadChatHistory()
+    addTransaction();
   }, [])
+
+  
+
+  const addTransaction = async () => {
+    try {
+      const response = await axios.post(
+        // 'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/add_transaction',
+        'http://localhost:5000/add_transaction',
+        {
+          user_id: 1,
+          date: '24-07-2024',
+          amount: 35000,
+          type: 'expense',
+          category: 'expense',
+          description: '',
+          location: '',
+          payment_method: '',
+          merchant: ''
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ Transaction Added:', response.data);
+    } catch (error: any) {
+      console.error('❌ Failed to add transaction:', error.response?.data || error.message);
+    }
+  };
+
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
