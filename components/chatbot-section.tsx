@@ -1,10 +1,6 @@
 "use client"
-
 import type React from "react"
-import { Plus } from "lucide-react" // Import Plus icon
-
-import axios from 'axios';
-
+import axios from "axios"
 import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,8 +24,7 @@ import {
   Edit3,
   Save,
   X,
-  Trash2,
-  RefreshCw,
+  CheckCircle,
 } from "lucide-react"
 
 interface Message {
@@ -43,6 +38,7 @@ interface Message {
     url: string
   }
   parsedTransaction?: ParsedTransaction
+  savedTransaction?: SavedTransaction
 }
 
 interface ParsedTransaction {
@@ -57,22 +53,43 @@ interface ParsedTransaction {
   location?: string
 }
 
-interface ChatSession {
-  id: string
-  title: string
-  lastMessage: Date
-  messageCount: number
+interface SavedTransaction {
+  amount: number
+  type: "income" | "expense"
+  category: string
+  subcategory?: string
+  description: string
+  date: string
+  merchant?: string
+  location?: string
+  savedAt: Date
+}
+
+interface ChatbotResponse {
+  amount: number | null
+  category: string | null
+  date: string | null
+  description: string | null
+  intent: string
+  response_text: string
+  subcategory: string | null
+  type: "expense" | "income" | null
 }
 
 export function ChatbotSection() {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      type: "bot",
+      content:
+        "Hi! I'm your financial assistant. You can tell me about your transactions like \"I spent $50 on groceries\" or upload receipts, and I'll help you categorize and track them!",
+      timestamp: new Date(),
+    },
+  ])
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<ParsedTransaction | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [currentChatId, setCurrentChatId] = useState<string>("")
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
@@ -94,75 +111,48 @@ export function ChatbotSection() {
     { value: "income", label: "Income", subcategories: ["Salary", "Freelance", "Investment", "Other Income"] },
   ]
 
-  // Load chat history on component mount
-  useEffect(() => {
-    loadChatHistory()
-    // chatbotInteract();
-    // addTransaction();
-  }, [])
-
-  
-
-  const addTransaction = async () => {
+  const chatbotInteract = async (message: string): Promise<ChatbotResponse | null> => {
     try {
       const response = await axios.post(
-        // 'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/transactions/add_transaction',
-        'http://localhost:5000/transactions/add_transaction',
+        "https://ai-personal-financial-insights-357761203344.asia-south1.run.app/chatbot/chatbot-interact",
         {
-          user_id: 1,
-          date: '24-07-2024',
-          amount: 35000,
-          type: 'expense',
-          category: 'expense',
-          description: '',
-          location: '',
-          payment_method: '',
-          merchant: ''
+          utterance: message,
         },
         {
           headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log('✅ Transaction Added:', response.data);
-    } catch (error: any) {
-      console.error('❌ Failed to add transaction:', error.response?.data || error.message);
-    }
-  };
-
-  const chatbotInteract = async (message:any) => {
-    try {
-      const response = await axios.post(
-        'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/chatbot/chatbot-interact',
-        // 'http://localhost:5000/transactions/add_transaction',
-        {
-          "utterance" : message
+            "Content-Type": "application/json",
+          },
         },
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      )
 
-      console.log('✅ Chat Response:', response.data);
+      console.log("✅ Chat Response:", response.data)
 
-      const userMessage: Message = {
+      // Add bot response message
+      const botMessage: Message = {
         id: Date.now().toString(),
         type: "bot",
         content: response.data.response_text,
         timestamp: new Date(),
       }
-  
-      const newMessages = [...messages, userMessage]
-      setMessages(newMessages)
-    } catch (error: any) {
-      console.error('❌ Failed to add transaction:', error.response?.data || error.message);
-    }
-  };
 
+      setMessages((prev) => [...prev, botMessage])
+
+      return response.data as ChatbotResponse
+    } catch (error: any) {
+      console.error("❌ Failed to interact with chatbot:", error.response?.data || error.message)
+
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        type: "bot",
+        content: "Sorry, I had trouble processing your request. Please try again.",
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, errorMessage])
+
+      return null
+    }
+  }
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -173,168 +163,6 @@ export function ChatbotSection() {
       }
     }
   }, [messages])
-
-  const loadChatHistory = async () => {
-    try {
-      setIsLoadingHistory(true)
-
-      // Load chat sessions list
-      const sessionsResponse = await fetch("/api/chat/sessions")
-      if (sessionsResponse.ok) {
-        const sessionsData = await sessionsResponse.json()
-        setChatSessions(sessionsData.sessions || [])
-
-        // Load the most recent chat or create a new one
-        if (sessionsData.sessions && sessionsData.sessions.length > 0) {
-          const mostRecentChat = sessionsData.sessions[0]
-          await loadChatMessages(mostRecentChat.id)
-        } else {
-          await createNewChat()
-        }
-      } else {
-        await createNewChat()
-      }
-    } catch (error) {
-      console.error("Error loading chat history:", error)
-      await createNewChat()
-    } finally {
-      setIsLoadingHistory(false)
-    }
-  }
-
-  const loadChatMessages = async (chatId: string) => {
-    try {
-      const response = await fetch(`/api/chat/messages?chatId=${chatId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setMessages(
-          data.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp),
-          })),
-        )
-        setCurrentChatId(chatId)
-
-        // Clear editing state when switching chats
-        setEditingTransaction(null)
-        setSelectedFile(null)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ""
-        }
-      }
-    } catch (error) {
-      console.error("Error loading chat messages:", error)
-    }
-  }
-
-  const createNewChat = async () => {
-    try {
-      const response = await fetch("/api/chat/sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: "New Chat",
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const newChatId = data.chatId
-
-        // Set welcome message
-        const welcomeMessage: Message = {
-          id: "welcome",
-          type: "bot",
-          content:
-            "Hi! I'm your financial assistant. You can tell me about your transactions like \"I spent $50 on groceries\" or upload receipts, and I'll help you categorize and track them!",
-          timestamp: new Date(),
-        }
-
-        // Clear current messages and set new chat
-        setMessages([welcomeMessage])
-        setCurrentChatId(newChatId)
-        setEditingTransaction(null) // Clear any editing state
-        setSelectedFile(null) // Clear any selected file
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ""
-        }
-
-        // Save welcome message
-        await saveMessage(newChatId, welcomeMessage)
-
-        // Refresh chat sessions to show updated list
-        await loadChatSessions()
-      }
-    } catch (error) {
-      console.error("Error creating new chat:", error)
-    }
-  }
-
-  const loadChatSessions = async () => {
-    try {
-      const response = await fetch("/api/chat/sessions")
-      if (response.ok) {
-        const data = await response.json()
-        setChatSessions(data.sessions || [])
-      }
-    } catch (error) {
-      console.error("Error loading chat sessions:", error)
-    }
-  }
-
-  const saveMessage = async (chatId: string, message: Message) => {
-    try {
-      await fetch("/api/chat/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          chatId,
-          message: {
-            ...message,
-            timestamp: message.timestamp.toISOString(),
-          },
-        }),
-      })
-    } catch (error) {
-      console.error("Error saving message:", error)
-    }
-  }
-
-  const updateChatTitle = async (chatId: string, title: string) => {
-    try {
-      await fetch(`/api/chat/sessions/${chatId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title }),
-      })
-      await loadChatSessions()
-    } catch (error) {
-      console.error("Error updating chat title:", error)
-    }
-  }
-
-  const deleteChatSession = async (chatId: string) => {
-    try {
-      await fetch(`/api/chat/sessions/${chatId}`, {
-        method: "DELETE",
-      })
-
-      // If we're deleting the current chat, create a new one
-      if (chatId === currentChatId) {
-        await createNewChat()
-      }
-
-      await loadChatSessions()
-    } catch (error) {
-      console.error("Error deleting chat session:", error)
-    }
-  }
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -360,69 +188,26 @@ export function ChatbotSection() {
     }
   }
 
-  const parseTransactionWithGemini = async (text: string, file?: File): Promise<ParsedTransaction> => {
-    try {
-      const formData = new FormData()
-      formData.append("text", text)
-      if (file) {
-        formData.append("file", file)
-      }
-
-      const response = await fetch("/api/gemini/parse-transaction", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to parse transaction")
-      }
-
-      const result = await response.json()
-      return result.parsedTransaction
-    } catch (error) {
-      console.error("Error parsing transaction:", error)
-      // Fallback parsing logic
-      return fallbackParseTransaction(text)
-    }
-  }
-
-  const fallbackParseTransaction = (text: string): ParsedTransaction => {
-    const amountMatch = text.match(/\$?(\d+(?:\.\d{2})?)/)
-    const amount = amountMatch ? Number.parseFloat(amountMatch[1]) : 0
-
-    const lowerText = text.toLowerCase()
-    let category = "other"
-    let type: "income" | "expense" = "expense"
-
-    // Simple keyword matching
-    if (
-      lowerText.includes("salary") ||
-      lowerText.includes("income") ||
-      lowerText.includes("paid") ||
-      lowerText.includes("earned")
-    ) {
-      type = "income"
-      category = "income"
-    } else if (lowerText.includes("grocery") || lowerText.includes("food") || lowerText.includes("restaurant")) {
-      category = "food"
-    } else if (lowerText.includes("gas") || lowerText.includes("uber") || lowerText.includes("transport")) {
-      category = "transportation"
-    } else if (lowerText.includes("movie") || lowerText.includes("entertainment")) {
-      category = "entertainment"
+  const convertChatbotResponseToTransaction = (response: ChatbotResponse): ParsedTransaction | null => {
+    // Check if essential data is present and not null
+    if (!response.amount || !response.type || !response.category || !response.description) {
+      return null
     }
 
     return {
-      amount,
-      type,
-      category,
-      description: text,
-      date: new Date().toISOString().split("T")[0],
-      confidence: 0.6,
+      amount: response.amount,
+      type: response.type,
+      category: response.category.toLowerCase(),
+      subcategory: response.subcategory || undefined,
+      description: response.description,
+      date: response.date || new Date().toISOString().split("T")[0],
+      confidence: 0.85, // Default confidence since it's not provided by the API
+      merchant: undefined,
+      location: undefined,
     }
   }
 
   const handleSendMessage = async () => {
-    
     if (!inputValue.trim() && !selectedFile) return
 
     const userMessage: Message = {
@@ -439,49 +224,25 @@ export function ChatbotSection() {
         : undefined,
     }
 
-    const newMessages = [...messages, userMessage]
-    setMessages(newMessages)
-
-    // Save user message
-    await saveMessage(currentChatId, userMessage);
-    setTimeout(() => {
-      chatbotInteract(inputValue);
-    }, 100);
-
-    
-    // Update chat title if this is the first user message
-    if (messages.length <= 1) {
-      const title = inputValue.length > 30 ? inputValue.substring(0, 30) + "..." : inputValue
-      await updateChatTitle(currentChatId, title)
-    }
+    setMessages((prev) => [...prev, userMessage])
 
     setIsLoading(true)
 
     try {
-      const parsedTransaction = await parseTransactionWithGemini(inputValue, selectedFile || undefined)
+      // Call chatbot API and get response
+      const chatbotResponse = await chatbotInteract(inputValue)
 
-      // const botResponse: Message = {
-      //   id: (Date.now() + 1).toString(),
-      //   type: "bot",
-      //   content: `I've analyzed your transaction and extracted the following information. Please review and edit if needed:`,
-      //   timestamp: new Date(),
-      //   parsedTransaction,
-      // }
+      if (chatbotResponse) {
+        // Convert response to transaction format
+        const parsedTransaction = convertChatbotResponseToTransaction(chatbotResponse)
 
-      // setMessages((prev) => [...prev, botResponse])
-      // await saveMessage(currentChatId, botResponse)
-      setEditingTransaction(parsedTransaction)
-    } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "bot",
-        content:
-          "Sorry, I had trouble processing your request. Please try again or enter the transaction details manually.",
-        timestamp: new Date(),
+        // Only show transaction popup if we have valid transaction data
+        if (parsedTransaction) {
+          setEditingTransaction(parsedTransaction)
+        }
       }
-
-      setMessages((prev) => [...prev, errorMessage])
-      await saveMessage(currentChatId, errorMessage)
+    } catch (error) {
+      console.error("Error processing message:", error)
     }
 
     setInputValue("")
@@ -496,43 +257,62 @@ export function ChatbotSection() {
     if (!editingTransaction) return
 
     setIsLoading(true)
-
     try {
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Call the add_transaction API
+      const response = await axios.post(
+        "https://ai-personal-financial-insights-357761203344.asia-south1.run.app/transactions/add_transaction",
+        {
+          user_id: 1,
+          date: editingTransaction.date,
+          amount: editingTransaction.amount,
+          type: editingTransaction.type,
+          category: editingTransaction.category,
+          description: editingTransaction.description,
+          location: editingTransaction.location || "",
+          payment_method: "",
+          merchant: editingTransaction.merchant || "",
         },
-        body: JSON.stringify(editingTransaction),
-      })
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      )
 
-      if (response.ok) {
-        const successMessage: Message = {
-          id: Date.now().toString(),
-          type: "bot",
-          content: `✅ Transaction saved successfully! $${editingTransaction.amount} ${editingTransaction.type} for ${editingTransaction.category} has been added to your records.`,
-          timestamp: new Date(),
-        }
+      console.log("✅ Transaction Added:", response.data)
 
-        setMessages((prev) => [...prev, successMessage])
-        await saveMessage(currentChatId, successMessage)
-        setEditingTransaction(null)
-        addTransaction();
-      } else {
-        throw new Error("Failed to save transaction")
+      // Create saved transaction object
+      const savedTransaction: SavedTransaction = {
+        amount: editingTransaction.amount,
+        type: editingTransaction.type,
+        category: editingTransaction.category,
+        subcategory: editingTransaction.subcategory,
+        description: editingTransaction.description,
+        date: editingTransaction.date,
+        merchant: editingTransaction.merchant,
+        location: editingTransaction.location,
+        savedAt: new Date(),
       }
-    } catch (error) {
+
+      const successMessage: Message = {
+        id: Date.now().toString(),
+        type: "bot",
+        content: `✅ Transaction saved successfully! Here are the details:`,
+        timestamp: new Date(),
+        savedTransaction,
+      }
+      setMessages((prev) => [...prev, successMessage])
+      setEditingTransaction(null)
+    } catch (error: any) {
+      console.error("❌ Failed to add transaction:", error.response?.data || error.message)
       const errorMessage: Message = {
         id: Date.now().toString(),
         type: "bot",
         content: "❌ Sorry, there was an error saving your transaction. Please try again.",
         timestamp: new Date(),
       }
-
       setMessages((prev) => [...prev, errorMessage])
-      await saveMessage(currentChatId, errorMessage)
     }
-
     setIsLoading(false)
   }
 
@@ -549,41 +329,114 @@ export function ChatbotSection() {
     }
   }
 
-  if (isLoadingHistory) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  const TransactionTable = ({ transaction }: { transaction: SavedTransaction }) => {
+    const CategoryIcon = getCategoryIcon(transaction.category)
+
     return (
-      <div className="max-w-7xl mx-auto">
-        <Card className="h-[700px] flex items-center justify-center">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600">Loading chat history...</p>
-          </div>
-        </Card>
+      <div className="mt-3 p-4 bg-white bg-opacity-95 rounded-lg border border-green-200">
+        <div className="flex items-center mb-3">
+          <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+          <h4 className="font-semibold text-sm text-green-800">Transaction Saved</h4>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-200">
+              <tr>
+                <td className="py-2 pr-4 font-medium text-gray-700">Amount:</td>
+                <td className="py-2 text-right">
+                  <span
+                    className={`font-semibold ${transaction.type === "income" ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {transaction.type === "income" ? "+" : "-"}
+                    {formatCurrency(transaction.amount)}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-medium text-gray-700">Type:</td>
+                <td className="py-2 text-right">
+                  <Badge variant={transaction.type === "income" ? "default" : "secondary"} className="text-xs">
+                    {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                  </Badge>
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-medium text-gray-700">Category:</td>
+                <td className="py-2 text-right">
+                  <div className="flex items-center justify-end">
+                    <CategoryIcon className="h-3 w-3 mr-1" />
+                    <span className="capitalize">{transaction.category}</span>
+                  </div>
+                </td>
+              </tr>
+              {transaction.subcategory && (
+                <tr>
+                  <td className="py-2 pr-4 font-medium text-gray-700">Subcategory:</td>
+                  <td className="py-2 text-right capitalize">{transaction.subcategory}</td>
+                </tr>
+              )}
+              <tr>
+                <td className="py-2 pr-4 font-medium text-gray-700">Date:</td>
+                <td className="py-2 text-right">{formatDate(transaction.date)}</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-medium text-gray-700">Description:</td>
+                <td className="py-2 text-right">{transaction.description}</td>
+              </tr>
+              {transaction.merchant && (
+                <tr>
+                  <td className="py-2 pr-4 font-medium text-gray-700">Merchant:</td>
+                  <td className="py-2 text-right">{transaction.merchant}</td>
+                </tr>
+              )}
+              {transaction.location && (
+                <tr>
+                  <td className="py-2 pr-4 font-medium text-gray-700">Location:</td>
+                  <td className="py-2 text-right">{transaction.location}</td>
+                </tr>
+              )}
+              <tr>
+                <td className="py-2 pr-4 font-medium text-gray-700">Saved At:</td>
+                <td className="py-2 text-right text-xs text-gray-500">{transaction.savedAt.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[calc(100vh-8rem)]">
-        {/* Chat Sessions Sidebar */}
-        
-
+      <div className="grid grid-cols-1 gap-6 h-[calc(100vh-8rem)]">
         {/* Main Chat Area */}
-        <div className="xl:col-span-3">
+        <div className="col-span-1">
           <Card className="h-full flex flex-col">
             <CardHeader className="flex-shrink-0">
               <CardTitle className="flex items-center space-x-2">
                 <Bot className="h-6 w-6 text-blue-600" />
                 <span>Financial Assistant</span>
-                {/* <Badge variant="outline" className="ml-auto">
-                  {messages.length} messages
-                </Badge> */}
               </CardTitle>
               <CardDescription>
                 Tell me about your transactions, upload receipts, and I'll help you categorize and track them
               </CardDescription>
             </CardHeader>
-
             <CardContent className="flex-1 flex flex-col min-h-0 p-6">
               {/* Messages Area - Scrollable */}
               <div className="flex-1 overflow-hidden mb-4">
@@ -594,7 +447,6 @@ export function ChatbotSection() {
                       const CategoryIcon = message.parsedTransaction
                         ? getCategoryIcon(message.parsedTransaction.category)
                         : null
-
                       return (
                         <div
                           key={message.id}
@@ -609,7 +461,6 @@ export function ChatbotSection() {
                           >
                             <Icon className="h-4 w-4" />
                           </div>
-
                           <div className={`flex-1 min-w-0 ${message.type === "user" ? "text-right" : ""}`}>
                             <div
                               className={`inline-block p-3 rounded-lg max-w-[85%] ${
@@ -617,7 +468,6 @@ export function ChatbotSection() {
                               }`}
                             >
                               <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-
                               {message.attachment && (
                                 <div className="mt-2 p-2 bg-white bg-opacity-20 rounded border">
                                   <div className="flex items-center space-x-2 text-xs">
@@ -626,7 +476,6 @@ export function ChatbotSection() {
                                   </div>
                                 </div>
                               )}
-
                               {message.parsedTransaction && (
                                 <div className="mt-3 p-3 bg-white bg-opacity-90 rounded border text-gray-900">
                                   <h4 className="font-medium text-sm mb-2 flex items-center">
@@ -662,14 +511,13 @@ export function ChatbotSection() {
                                   </div>
                                 </div>
                               )}
+                              {message.savedTransaction && <TransactionTable transaction={message.savedTransaction} />}
                             </div>
-
                             <p className="text-xs text-gray-500 mt-1 px-1">{message.timestamp.toLocaleTimeString()}</p>
                           </div>
                         </div>
                       )
                     })}
-
                     {isLoading && (
                       <div className="flex items-start space-x-3">
                         <div className="p-2 rounded-full bg-gray-200 text-gray-700">
@@ -693,7 +541,6 @@ export function ChatbotSection() {
                   </div>
                 </ScrollArea>
               </div>
-
               {/* Transaction Editor - Fixed Position */}
               {editingTransaction && (
                 <div className="flex-shrink-0 mb-4">
@@ -721,7 +568,6 @@ export function ChatbotSection() {
                             onChange={(e) => updateEditingTransaction("amount", Number.parseFloat(e.target.value))}
                           />
                         </div>
-
                         <div>
                           <Label htmlFor="type">Transaction Type</Label>
                           <Select
@@ -737,7 +583,6 @@ export function ChatbotSection() {
                             </SelectContent>
                           </Select>
                         </div>
-
                         <div>
                           <Label htmlFor="category">Category</Label>
                           <Select
@@ -756,7 +601,6 @@ export function ChatbotSection() {
                             </SelectContent>
                           </Select>
                         </div>
-
                         <div>
                           <Label htmlFor="subcategory">Subcategory</Label>
                           <Select
@@ -777,7 +621,6 @@ export function ChatbotSection() {
                             </SelectContent>
                           </Select>
                         </div>
-
                         <div>
                           <Label htmlFor="date">Date</Label>
                           <Input
@@ -787,7 +630,6 @@ export function ChatbotSection() {
                             onChange={(e) => updateEditingTransaction("date", e.target.value)}
                           />
                         </div>
-
                         <div>
                           <Label htmlFor="merchant">Merchant (Optional)</Label>
                           <Input
@@ -797,7 +639,6 @@ export function ChatbotSection() {
                             placeholder="Store or merchant name"
                           />
                         </div>
-
                         <div className="md:col-span-2 lg:col-span-3">
                           <Label htmlFor="description">Description</Label>
                           <Textarea
@@ -809,7 +650,6 @@ export function ChatbotSection() {
                           />
                         </div>
                       </div>
-
                       <div className="flex justify-end space-x-2 mt-4">
                         <Button variant="outline" onClick={handleCancelEdit}>
                           Cancel
@@ -823,7 +663,6 @@ export function ChatbotSection() {
                   </Card>
                 </div>
               )}
-
               {/* File Upload Preview - Fixed Position */}
               {selectedFile && (
                 <div className="flex-shrink-0 mb-4">
@@ -851,7 +690,6 @@ export function ChatbotSection() {
                   </div>
                 </div>
               )}
-
               {/* Input Area - Fixed at Bottom */}
               <div className="flex-shrink-0">
                 <div className="flex space-x-2">
@@ -862,7 +700,6 @@ export function ChatbotSection() {
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-
                   <Button
                     variant="outline"
                     size="icon"
@@ -872,7 +709,6 @@ export function ChatbotSection() {
                   >
                     <Paperclip className="h-4 w-4" />
                   </Button>
-
                   <Input
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
@@ -881,7 +717,6 @@ export function ChatbotSection() {
                     disabled={isLoading}
                     className="flex-1"
                   />
-
                   <Button
                     onClick={handleSendMessage}
                     disabled={isLoading || (!inputValue.trim() && !selectedFile)}

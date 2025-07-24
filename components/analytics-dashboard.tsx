@@ -1,54 +1,98 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-
-import { useState } from "react"
+import axios from "axios"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
 import { Star, DollarSign, CreditCard, PiggyBank, TrendingDown, TrendingUp } from "lucide-react"
 
 export function AnalyticsDashboard() {
-  const [dateRange, setDateRange] = useState<undefined>()
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
 
-  const handleExportData = () => {
-    console.log("Exporting data...")
-  }
+  type SpendingEntry = {
+    date: string; // e.g., "Wed, 25 Jun 2025 00:00:00 GMT"
+    total_spending: number;
+  };
+  
+  type TransformedSpending = {
+    day: string;
+    amount: number;
+    date: string;
+  };
+  
+  const [avgMonthlyIncome, setAvgMonthlyIncome] = useState(0)
+  const [totalIncome, setTotalIncome] = useState(0)
+  const [totalExpenses, setTotalExpenses] = useState(0)
+  const [balance, setBalance] = useState(0)
+  const [dailySpendingData, setDailySpendingData] = useState<TransformedSpending[]>([]);
+  
+  // Auto-scroll to bottom when new messages are added
+    useEffect(() => {
+      getStatistics();
+      getDailyTrends();
+    }, [])
 
-  // Daily spending data for the last 30 days
-  const dailySpendingData = [
-    { day: "1", amount: 45, date: "Jun 1" },
-    { day: "2", amount: 120, date: "Jun 2" },
-    { day: "3", amount: 35, date: "Jun 3" },
-    { day: "4", amount: 80, date: "Jun 4" },
-    { day: "5", amount: 65, date: "Jun 5" },
-    { day: "6", amount: 150, date: "Jun 6" },
-    { day: "7", amount: 90, date: "Jun 7" },
-    { day: "8", amount: 55, date: "Jun 8" },
-    { day: "9", amount: 110, date: "Jun 9" },
-    { day: "10", amount: 75, date: "Jun 10" },
-    { day: "11", amount: 95, date: "Jun 11" },
-    { day: "12", amount: 130, date: "Jun 12" },
-    { day: "13", amount: 40, date: "Jun 13" },
-    { day: "14", amount: 85, date: "Jun 14" },
-    { day: "15", amount: 160, date: "Jun 15" },
-    { day: "16", amount: 70, date: "Jun 16" },
-    { day: "17", amount: 105, date: "Jun 17" },
-    { day: "18", amount: 125, date: "Jun 18" },
-    { day: "19", amount: 60, date: "Jun 19" },
-    { day: "20", amount: 140, date: "Jun 20" },
-    { day: "21", amount: 85, date: "Jun 21" },
-    { day: "22", amount: 115, date: "Jun 22" },
-    { day: "23", amount: 95, date: "Jun 23" },
-    { day: "24", amount: 175, date: "Jun 24" },
-    { day: "25", amount: 65, date: "Jun 25" },
-    { day: "26", amount: 135, date: "Jun 26" },
-    { day: "27", amount: 80, date: "Jun 27" },
-    { day: "28", amount: 100, date: "Jun 28" },
-    { day: "29", amount: 120, date: "Jun 29" },
-    { day: "30", amount: 90, date: "Jun 30" },
-  ]
+  const getStatistics = async (): Promise<any | null> => {
+      try {
+        const response = await axios.get(
+          "https://ai-personal-financial-insights-357761203344.asia-south1.run.app/statistics/?user_id=1",
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        )
+  
+        console.log("✅ Statistics Response:", response.data)
+        setTotalIncome(response.data.total_income);
+        setTotalExpenses(response.data.total_expenses)
+        setBalance(response.data.balance)
+  
+        return response.data
+      } catch (error: any) {
+        console.error("❌ Failed to interact with chatbot:", error.response?.data || error.message)
+  
+        return null
+      }
+    }
+
+    const getDailyTrends = async (): Promise<any | null> => {
+      try {
+        const response = await axios.get(
+          "https://ai-personal-financial-insights-357761203344.asia-south1.run.app/daily-spend/trends",
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        )
+  
+        console.log("✅ daily trends Response:", response.data)
+
+        const dailySpendingData = transformSpendingData(response.data.last_30_days_spending_pattern);
+        setDailySpendingData(dailySpendingData);
+  
+        return response.data
+      } catch (error: any) {
+        console.error("❌ Failed to interact with chatbot:", error.response?.data || error.message)
+  
+        return null
+      }
+    }
+
+    function transformSpendingData(data: any[]): any[] {
+      return data.map((entry) => {
+        const dateObj = new Date(entry.date);
+        const day = dateObj.getDate().toString(); // "25"
+        const monthShort = dateObj.toLocaleString('en-US', { month: 'short' }); // "Jun"
+        const formattedDate = `${monthShort} ${day}`; // "Jun 25"
+    
+        return {
+          day,
+          amount: parseFloat(entry.total_spending.toFixed(2)),
+          date: formattedDate
+        };
+      });
+    }
 
   // Weekly spending pattern
   const weeklySpendingPattern = [
@@ -262,7 +306,7 @@ export function AnalyticsDashboard() {
       </Card>
 
       {/* Financial Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
@@ -271,8 +315,8 @@ export function AnalyticsDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">$32,600</div>
-            <p className="text-sm text-gray-500 mt-1">Avg: $5433/month</p>
+            <div className="text-3xl font-bold text-green-600">${totalIncome}</div>
+            <p className="text-sm text-gray-500 mt-1">Avg: {avgMonthlyIncome}/month</p>
           </CardContent>
         </Card>
 
@@ -284,7 +328,7 @@ export function AnalyticsDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">$23,700</div>
+            <div className="text-3xl font-bold text-red-600">${totalExpenses}</div>
             <p className="text-sm text-gray-500 mt-1">Avg: $3950/month</p>
           </CardContent>
         </Card>
@@ -297,27 +341,14 @@ export function AnalyticsDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">$8,900</div>
-            <p className="text-sm text-gray-500 mt-1">Rate: 27.3%</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Current Debt</CardTitle>
-            <div className="p-2 bg-orange-100 rounded-full">
-              <TrendingDown className="h-4 w-4 text-orange-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-600">$1,500</div>
-            <p className="text-sm text-green-600 mt-1">-40% from start</p>
+            <div className="text-3xl font-bold text-blue-600">${balance}</div>
+            <p className="text-sm text-gray-500 mt-1">Rate {100*balance / totalIncome} %</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Daily Spending Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         {/* Daily Spending Trend */}
         <Card>
           <CardHeader>
@@ -392,83 +423,6 @@ export function AnalyticsDashboard() {
                 <text x="30" y="165" fontSize="12" fill="#6b7280" textAnchor="end">
                   $0
                 </text>
-              </svg>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Weekly Spending Pattern */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Spending Pattern</CardTitle>
-            <p className="text-sm text-gray-600">Average spending by day of the week</p>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[320px] relative">
-              <svg className="w-full h-full" viewBox="0 0 400 280">
-                {weeklySpendingPattern.map((data, index) => {
-                  const x = 60 + index * 45
-                  const currentHeight = (data.amount / 200) * 180
-                  const avgHeight = (data.average / 200) * 180
-
-                  return (
-                    <g key={index}>
-                      {/* Average bar (background) */}
-                      <rect x={x - 8} y={200 - avgHeight} width="16" height={avgHeight} fill="#e5e7eb" rx="2" />
-
-                      {/* Current bar */}
-                      <rect
-                        x={x - 8}
-                        y={200 - currentHeight}
-                        width="16"
-                        height={currentHeight}
-                        fill={data.amount > data.average ? "#ef4444" : "#10b981"}
-                        rx="2"
-                      />
-
-                      {/* Day label */}
-                      <text x={x} y="220" fontSize="12" fill="#6b7280" textAnchor="middle">
-                        {data.day}
-                      </text>
-
-                      {/* Amount label */}
-                      <text
-                        x={x}
-                        y={190 - currentHeight}
-                        fontSize="10"
-                        fill="#374151"
-                        textAnchor="middle"
-                        fontWeight="bold"
-                      >
-                        ${data.amount}
-                      </text>
-                    </g>
-                  )
-                })}
-
-                {/* Y-axis labels */}
-                <text x="45" y="45" fontSize="12" fill="#6b7280" textAnchor="end">
-                  $200
-                </text>
-                <text x="45" y="110" fontSize="12" fill="#6b7280" textAnchor="end">
-                  $100
-                </text>
-                <text x="45" y="205" fontSize="12" fill="#6b7280" textAnchor="end">
-                  $0
-                </text>
-
-                {/* Legend */}
-                <g transform="translate(60, 240)">
-                  <rect x="0" y="0" width="12" height="12" fill="#10b981" rx="2" />
-                  <text x="20" y="10" fontSize="11" fill="#6b7280">
-                    Below Average
-                  </text>
-
-                  <rect x="120" y="0" width="12" height="12" fill="#ef4444" rx="2" />
-                  <text x="140" y="10" fontSize="11" fill="#6b7280">
-                    Above Average
-                  </text>
-                </g>
               </svg>
             </div>
           </CardContent>
