@@ -1,0 +1,17 @@
+<!-- React + ReactDOM -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<!-- Your widget JS -->
+<script src="./dist/finscore-widget.iife.js"></script>
+
+<!-- DOM container -->
+<div id="finscore-widget"></div>
+
+<!-- Call your widget -->
+<script>
+    window.FinScoreWidget("finscore-widget", {
+        userId: 123,
+        token: "xyz123"
+    });
+</script>

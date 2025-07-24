@@ -1,13 +1,13 @@
 "use client"
-import { AnalyticsDashboard } from "@/components/analytics-dashboard"
-import { TransactionsSection } from "@/components/transactions-section"
-import { AchievementsSection } from "@/components/achievements-section"
-import { HealthScoreSection } from "@/components/health-score-section"
-import { OverviewSection } from "@/components/overview-section"
-import { GoalsSection } from "@/components/goals-section"
-import { DailyQuestsSection } from "@/components/daily-quests-section"
-import { ChatbotSection } from "@/components/chatbot-section"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AnalyticsDashboard } from "../components/analytics-dashboard"
+import { TransactionsSection } from "../components/transactions-section"
+// import { AchievementsSection } from "@/components/achievements-section"
+import { HealthScoreSection } from "../components/health-score-section"
+import { OverviewSection } from "../components/overview-section"
+import { GoalsSection } from "../components/goals-section"
+import { DailyQuestsSection } from "../components/daily-quests-section"
+import { ChatbotSection } from "../components/chatbot-section"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 
 export default function FinancialAnalyticsPage() {
   return (
@@ -42,9 +42,9 @@ export default function FinancialAnalyticsPage() {
             <DailyQuestsSection />
           </TabsContent>
 
-          <TabsContent value="achievements" className="space-y-6">
+          {/* <TabsContent value="achievements" className="space-y-6">
             <AchievementsSection />
-          </TabsContent>
+          </TabsContent> */}
 
           <TabsContent value="health" className="space-y-6">
             <HealthScoreSection />
