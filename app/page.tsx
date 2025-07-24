@@ -4,7 +4,6 @@ import { TransactionsSection } from "@/components/transactions-section"
 import { AchievementsSection } from "@/components/achievements-section"
 import { HealthScoreSection } from "@/components/health-score-section"
 import { OverviewSection } from "@/components/overview-section"
-import { TrendsSection } from "@/components/trends-section"
 import { GoalsSection } from "@/components/goals-section"
 import { DailyQuestsSection } from "@/components/daily-quests-section"
 import { ChatbotSection } from "@/components/chatbot-section"
@@ -19,11 +18,11 @@ export default function FinancialAnalyticsPage() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="assistant">Financial Assistant</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="quests">Daily Quests</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
+            {/* <TabsTrigger value="quests">Daily Quests</TabsTrigger> */}
+            {/* <TabsTrigger value="achievements">Achievements</TabsTrigger> */}
             <TabsTrigger value="health">Health Score</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="trends">Trends</TabsTrigger>
+            {/* <TabsTrigger value="trends">Trends</TabsTrigger> */}
             <TabsTrigger value="goals">Goals</TabsTrigger>
           </TabsList>
 
@@ -53,10 +52,6 @@ export default function FinancialAnalyticsPage() {
 
           <TabsContent value="overview" className="space-y-6">
             <OverviewSection />
-          </TabsContent>
-
-          <TabsContent value="trends" className="space-y-6">
-            <TrendsSection />
           </TabsContent>
 
           <TabsContent value="goals" className="space-y-6">

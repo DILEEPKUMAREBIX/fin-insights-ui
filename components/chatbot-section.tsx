@@ -105,8 +105,8 @@ export function ChatbotSection() {
   const addTransaction = async () => {
     try {
       const response = await axios.post(
-        'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/add_transaction',
-        // 'http://localhost:5000/add_transaction',
+        'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/transactions/add_transaction',
+        // 'http://localhost:5000/transactions/add_transaction',
         {
           user_id: 1,
           date: '24-07-2024',
