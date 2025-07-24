@@ -97,7 +97,8 @@ export function ChatbotSection() {
   // Load chat history on component mount
   useEffect(() => {
     loadChatHistory()
-    addTransaction();
+    // chatbotInteract();
+    // addTransaction();
   }, [])
 
   
@@ -105,8 +106,8 @@ export function ChatbotSection() {
   const addTransaction = async () => {
     try {
       const response = await axios.post(
-        'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/transactions/add_transaction',
-        // 'http://localhost:5000/transactions/add_transaction',
+        // 'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/transactions/add_transaction',
+        'http://localhost:5000/transactions/add_transaction',
         {
           user_id: 1,
           date: '24-07-2024',
@@ -126,6 +127,37 @@ export function ChatbotSection() {
       );
 
       console.log('✅ Transaction Added:', response.data);
+    } catch (error: any) {
+      console.error('❌ Failed to add transaction:', error.response?.data || error.message);
+    }
+  };
+
+  const chatbotInteract = async (message:any) => {
+    try {
+      const response = await axios.post(
+        'https://ai-personal-financial-insights-357761203344.asia-south1.run.app/chatbot/chatbot-interact',
+        // 'http://localhost:5000/transactions/add_transaction',
+        {
+          "utterance" : message
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ Chat Response:', response.data);
+
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: "bot",
+        content: response.data.response_text,
+        timestamp: new Date(),
+      }
+  
+      const newMessages = [...messages, userMessage]
+      setMessages(newMessages)
     } catch (error: any) {
       console.error('❌ Failed to add transaction:', error.response?.data || error.message);
     }
@@ -390,6 +422,7 @@ export function ChatbotSection() {
   }
 
   const handleSendMessage = async () => {
+    
     if (!inputValue.trim() && !selectedFile) return
 
     const userMessage: Message = {
@@ -410,8 +443,12 @@ export function ChatbotSection() {
     setMessages(newMessages)
 
     // Save user message
-    await saveMessage(currentChatId, userMessage)
+    await saveMessage(currentChatId, userMessage);
+    setTimeout(() => {
+      chatbotInteract(inputValue);
+    }, 100);
 
+    
     // Update chat title if this is the first user message
     if (messages.length <= 1) {
       const title = inputValue.length > 30 ? inputValue.substring(0, 30) + "..." : inputValue
@@ -423,16 +460,16 @@ export function ChatbotSection() {
     try {
       const parsedTransaction = await parseTransactionWithGemini(inputValue, selectedFile || undefined)
 
-      const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "bot",
-        content: `I've analyzed your transaction and extracted the following information. Please review and edit if needed:`,
-        timestamp: new Date(),
-        parsedTransaction,
-      }
+      // const botResponse: Message = {
+      //   id: (Date.now() + 1).toString(),
+      //   type: "bot",
+      //   content: `I've analyzed your transaction and extracted the following information. Please review and edit if needed:`,
+      //   timestamp: new Date(),
+      //   parsedTransaction,
+      // }
 
-      setMessages((prev) => [...prev, botResponse])
-      await saveMessage(currentChatId, botResponse)
+      // setMessages((prev) => [...prev, botResponse])
+      // await saveMessage(currentChatId, botResponse)
       setEditingTransaction(parsedTransaction)
     } catch (error) {
       const errorMessage: Message = {
@@ -480,6 +517,7 @@ export function ChatbotSection() {
         setMessages((prev) => [...prev, successMessage])
         await saveMessage(currentChatId, successMessage)
         setEditingTransaction(null)
+        addTransaction();
       } else {
         throw new Error("Failed to save transaction")
       }
