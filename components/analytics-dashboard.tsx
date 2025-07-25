@@ -316,7 +316,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">${totalIncome}</div>
-            <p className="text-sm text-gray-500 mt-1">Avg: {avgMonthlyIncome}/month</p>
+            {/* <p className="text-sm text-gray-500 mt-1">Avg: {avgMonthlyIncome}/month</p> */}
           </CardContent>
         </Card>
 
@@ -329,7 +329,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">${totalExpenses}</div>
-            <p className="text-sm text-gray-500 mt-1">Avg: $3950/month</p>
+            {/* <p className="text-sm text-gray-500 mt-1">Avg: $3950/month</p> */}
           </CardContent>
         </Card>
 
