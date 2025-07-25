@@ -58,7 +58,7 @@ export function AnalyticsDashboard() {
     const getDailyTrends = async (): Promise<any | null> => {
       try {
         const response = await axios.get(
-          "https://ai-personal-financial-insights-357761203344.asia-south1.run.app/daily-spend/trends/?user_id=1",
+          "https://ai-personal-financial-insights-357761203344.asia-south1.run.app/daily-spend/trends?user_id=1",
           {
             headers: {
               "Content-Type": "application/json",
